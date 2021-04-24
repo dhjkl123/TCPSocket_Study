@@ -28,6 +28,7 @@ CSocketStudyDlg::CSocketStudyDlg(CWnd* pParent /*=nullptr*/)
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	m_pListenSocket = NULL;
 	m_pDataSocket = NULL;
+	m_bool = FALSE;
 }
 CSocketStudyDlg::~CSocketStudyDlg()
 {
@@ -41,6 +42,7 @@ void CSocketStudyDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_IPADDRESS1, m_ipaddr);
 	DDX_Control(pDX, IDC_EDIT1, m_edit);
+	DDX_Control(pDX, IDC_EDIT2, m_edit_path);
 }
 
 BEGIN_MESSAGE_MAP(CSocketStudyDlg, CDialogEx)
@@ -50,6 +52,8 @@ BEGIN_MESSAGE_MAP(CSocketStudyDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_CONNECT, &CSocketStudyDlg::OnBnClickedButtonConnect)
 	ON_BN_CLICKED(IDC_BUTTON_DISCON, &CSocketStudyDlg::OnBnClickedButtonDiscon)
 	ON_BN_CLICKED(IDC_BUTTON_SEND, &CSocketStudyDlg::OnBnClickedButtonSend)
+	ON_BN_CLICKED(IDC_BUTTON_SELECT, &CSocketStudyDlg::OnBnClickedButtonSelect)
+	ON_BN_CLICKED(IDC_BUTTON_FILESEND, &CSocketStudyDlg::OnBnClickedButtonFilesend)
 END_MESSAGE_MAP()
 
 
@@ -203,12 +207,24 @@ void CSocketStudyDlg::ProcessAccept(int nErrorCode)
 
 void CSocketStudyDlg::ProcessReceive(CDataSocket *pSocket, int nErrorCode)
 {
-	TCHAR buf[256 + 1];
-	int nBytes = pSocket->Receive(buf, 256);
+	char buf[1000000];
+	int nBytes = pSocket->Receive(buf, 1000000);
 	buf[nBytes] = _T('\0');
 	CString str;
 	str.Format(_T("%s"), &buf);
-	m_list->AddString(str);
+	if (str == "FileSend")
+	{
+		m_bool = TRUE;
+	}
+	else if (m_bool)
+	{
+		CFile file;
+		file.Open(_T("Recive.txt"), CFile::modeCreate | CFile::modeWrite);
+		file.Write(buf, sizeof(buf));
+		m_bool = FALSE;
+	}
+	else
+		m_list->AddString(str);
 }
 
 void CSocketStudyDlg::ProcessClose(CDataSocket* pSocket, int nErrorCode)
@@ -286,4 +302,63 @@ void CSocketStudyDlg::OnBnClickedButtonSend()
 		m_edit.SetWindowText(_T(""));
 		m_edit.SetFocus();
 	}
+}
+
+
+void CSocketStudyDlg::OnBnClickedButtonSelect()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	CFileDialog dlg(TRUE);
+	if (dlg.DoModal() == IDOK)
+	{
+		m_edit_path.SetWindowText(dlg.GetPathName());
+	}
+}
+
+
+void CSocketStudyDlg::OnBnClickedButtonFilesend()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	CString sPath = _T("FileSend");
+	char pbuf[1000000] = { 0, };
+	int n = 0;
+
+	n = m_pDataSocket->Send((LPCTSTR)sPath, (sPath.GetLength() + 1) * sizeof(TCHAR));
+	if (n < 0)
+	{
+		MessageBox(_T("요청 실패!"));
+		return;
+	}
+	else
+	{
+		MessageBox(_T("요청 성공!"));
+	}
+
+
+	m_edit_path.GetWindowText(sPath);
+
+		CFile file;
+		if (!file.Open(sPath, CFile::modeRead))
+		{
+			AfxMessageBox(_T("파일 열기 실패!"));
+			return;
+		}
+		UINT nRead = file.Read(pbuf, 1000000);
+		if (nRead < 0)
+		{
+			AfxMessageBox(_T("파일 읽기 실패!"));
+			//file.Close();
+			return;
+		}
+		else
+		{
+
+			n = m_pDataSocket->Send(pbuf, sizeof(pbuf));
+			if (n < 0)
+			{
+				MessageBox(_T("음수 결과!"));
+			}
+			file.Close();
+		}
+		return;
 }
