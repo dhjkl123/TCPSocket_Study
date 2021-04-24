@@ -42,4 +42,9 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	virtual BOOL DestroyWindow();
+	CIPAddressCtrl m_ipaddr;
+	CEdit m_edit;
+	afx_msg void OnBnClickedButtonConnect();
+	afx_msg void OnBnClickedButtonDiscon();
+	afx_msg void OnBnClickedButtonSend();
 };

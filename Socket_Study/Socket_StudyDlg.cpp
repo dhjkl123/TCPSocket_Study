@@ -39,12 +39,17 @@ CSocketStudyDlg::~CSocketStudyDlg()
 void CSocketStudyDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_IPADDRESS1, m_ipaddr);
+	DDX_Control(pDX, IDC_EDIT1, m_edit);
 }
 
 BEGIN_MESSAGE_MAP(CSocketStudyDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_BUTTON_CONNECT, &CSocketStudyDlg::OnBnClickedButtonConnect)
+	ON_BN_CLICKED(IDC_BUTTON_DISCON, &CSocketStudyDlg::OnBnClickedButtonDiscon)
+	ON_BN_CLICKED(IDC_BUTTON_SEND, &CSocketStudyDlg::OnBnClickedButtonSend)
 END_MESSAGE_MAP()
 
 
@@ -80,6 +85,7 @@ BOOL CSocketStudyDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
+	m_ipaddr.SetWindowTextW(_T("127.0.0.1"));
 	m_list = (CListBox *)GetDlgItem(IDC_LIST1);
 
 	ASSERT(m_pListenSocket == NULL);
@@ -211,4 +217,73 @@ void CSocketStudyDlg::ProcessClose(CDataSocket* pSocket, int nErrorCode)
 	delete m_pDataSocket;
 	m_pDataSocket = NULL;
 	m_list->AddString(_T("##접속 종료"));
+}
+
+
+void CSocketStudyDlg::OnBnClickedButtonConnect()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	if (m_pDataSocket == NULL)
+	{
+		m_pDataSocket = new CDataSocket(this);
+		m_pDataSocket->Create();
+		CString addr;
+		m_ipaddr.GetWindowText(addr);
+		if (m_pDataSocket->Connect(addr, 8000))
+		{
+			MessageBox(_T("접속 성공"));
+			m_edit.SetFocus();
+		}
+		else
+		{
+			MessageBox(_T("접속 실패"));
+			delete m_pDataSocket;
+			m_pDataSocket = NULL;
+		}
+	}
+	else
+	{
+		MessageBox(_T("이미 접속된 서버"));
+		m_edit.SetFocus();
+	}
+}
+
+
+void CSocketStudyDlg::OnBnClickedButtonDiscon()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	if (m_pDataSocket == NULL)
+	{
+		MessageBox(_T("서버 접속 안함"));
+	}
+	else
+	{
+		m_pDataSocket->Close();
+		delete m_pDataSocket;
+		m_pDataSocket = NULL;
+		MessageBox(_T("접속 해제"));
+	}
+}
+
+
+void CSocketStudyDlg::OnBnClickedButtonSend()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	if (m_pDataSocket == NULL)
+	{
+		MessageBox(_T("서버 접속 안함"));
+	}
+	else
+	{
+		CString message;
+		m_edit.GetWindowText(message);
+		int n;
+		n = m_pDataSocket->Send((LPCTSTR)message, (message.GetLength() + 1) * sizeof(TCHAR));
+		if (n < 0)
+		{
+			MessageBox(_T("음수 결과!"));
+		}
+		m_edit.SetWindowText(_T(""));
+		m_edit.SetFocus();
+	}
 }

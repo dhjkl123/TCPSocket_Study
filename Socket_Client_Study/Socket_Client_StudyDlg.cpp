@@ -105,8 +105,24 @@ BOOL CSocketClientStudyDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
+	m_list = (CListBox*)GetDlgItem(IDC_LIST1);
 	m_pDataSocket = NULL;
 	m_ipdaar.SetWindowTextW(_T("127.0.0.1"));
+
+	ASSERT(m_pListenSocket == NULL);
+	m_pListenSocket = new CListenSocket(this);
+	if (m_pListenSocket->Create(8000))
+	{
+		if (m_pListenSocket->Listen())
+		{
+			AfxMessageBox(_T("서버를 시작합니다."));
+			return TRUE;
+		}
+
+	}
+
+	AfxMessageBox(_T("이미 실행중인 서버가 있습니다."));
+
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
 
@@ -202,6 +218,7 @@ void CSocketClientStudyDlg::OnBnClickedButtonDiscon()
 		m_pDataSocket->Close();
 		delete m_pDataSocket;
 		m_pDataSocket = NULL;
+		MessageBox(_T("접속 해제"));
 	}
 }
 
@@ -226,4 +243,49 @@ void CSocketClientStudyDlg::OnBnClickedButtonSend()
 		m_edit.SetWindowText(_T(""));
 		m_edit.SetFocus();
 	}
+}
+
+void CSocketClientStudyDlg::ProcessAccept(int nErrorCode)
+{
+	// TODO: 여기에 구현 코드 추가.
+	CString sPeerAddr;
+	UINT PeerPort;
+	CString str;
+
+	ASSERT(nErrorCode == 0);
+
+	if (m_pDataSocket == NULL)
+	{
+		m_pDataSocket = new CDataSocket(this);
+		if (m_pListenSocket->Accept(*m_pDataSocket))
+		{
+			m_pDataSocket->GetPeerName(sPeerAddr, PeerPort);
+			str.Format(_T("## IP: %s, Port : %d ##"), sPeerAddr, PeerPort);
+			m_list->AddString(str);
+		}
+		else
+		{
+			delete m_pDataSocket;
+			m_pDataSocket = NULL;
+		}
+	}
+
+}
+
+void CSocketClientStudyDlg::ProcessReceive(CDataSocket* pSocket, int nErrorCode)
+{
+	TCHAR buf[256 + 1];
+	int nBytes = pSocket->Receive(buf, 256);
+	buf[nBytes] = _T('\0');
+	CString str;
+	str.Format(_T("%s"), &buf);
+	m_list->AddString(str);
+}
+
+void CSocketClientStudyDlg::ProcessClose(CDataSocket* pSocket, int nErrorCode)
+{
+	pSocket->Close();
+	delete m_pDataSocket;
+	m_pDataSocket = NULL;
+	m_list->AddString(_T("##접속 종료"));
 }

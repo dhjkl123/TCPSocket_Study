@@ -10,6 +10,8 @@ public:
 	virtual ~CDataSocket();
 
 	CSocketClientStudyDlg* m_pDlg;
+	virtual void OnReceive(int nErrorCode);
+	virtual void OnClose(int nErrorCode);
 };
 
 

@@ -4,9 +4,10 @@
 
 #pragma once
 #include "CDataSocket.h"
-
+#include "CListenSocket.h"
 // CSocketClientStudyDlg 대화 상자
 class CDataSocket;
+class CListenSocket;
 class CSocketClientStudyDlg : public CDialog
 {
 // 생성입니다.
@@ -14,6 +15,11 @@ public:
 	CSocketClientStudyDlg(CWnd* pParent = nullptr);	// 표준 생성자입니다.
 
 	CDataSocket* m_pDataSocket;
+	CListenSocket* m_pListenSocket;
+
+	void ProcessAccept(int nErrorCode);
+	void ProcessReceive(CDataSocket* pSocket, int nErrorCode);
+	void ProcessClose(CDataSocket* pSocket, int nErrorCode);
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_SOCKET_CLIENT_STUDY_DIALOG };
@@ -36,6 +42,7 @@ protected:
 public:
 	CIPAddressCtrl m_ipdaar;
 	CEdit m_edit;
+	CListBox* m_list;
 	afx_msg void OnBnClickedButtonConnect();
 	afx_msg void OnBnClickedButtonDiscon();
 	afx_msg void OnBnClickedButtonSend();
