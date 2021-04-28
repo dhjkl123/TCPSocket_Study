@@ -29,6 +29,7 @@ CSocketStudyDlg::CSocketStudyDlg(CWnd* pParent /*=nullptr*/)
 	m_pListenSocket = NULL;
 	m_pDataSocket = NULL;
 	m_bool = FALSE;
+	m_nFileLen = 0;
 }
 CSocketStudyDlg::~CSocketStudyDlg()
 {
@@ -89,7 +90,11 @@ BOOL CSocketStudyDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
-	m_ipaddr.SetWindowTextW(_T("127.0.0.1"));
+#ifdef DEBUG
+	m_ipaddr.SetWindowTextW(_T("172.30.1.7"));
+#else // DEBUG
+	m_ipaddr.SetWindowTextW(_T("172.30.1.41"));
+#endif
 	m_list = (CListBox *)GetDlgItem(IDC_LIST1);
 
 	ASSERT(m_pListenSocket == NULL);
@@ -207,24 +212,65 @@ void CSocketStudyDlg::ProcessAccept(int nErrorCode)
 
 void CSocketStudyDlg::ProcessReceive(CDataSocket *pSocket, int nErrorCode)
 {
-	char buf[1000000];
-	int nBytes = pSocket->Receive(buf, 1000000);
-	buf[nBytes] = _T('\0');
-	CString str;
+	char buf[100] = { 0, };
+	int nBytes = pSocket->Receive(buf, 100);
+	int nFileLen = 0;
+	CString str, sTmp;
 	str.Format(_T("%s"), &buf);
-	if (str == "FileSend")
+
+	if (str.Left(8) == "FileSend")
 	{
 		m_bool = TRUE;
+		sTmp = str.Right(4);
+		m_sPath = _T("Recive") + sTmp;
+		str.Replace(_T("FileSend"), _T(""));
+
+		int nStrPos = str.Find(_T("."));
+		nFileLen = _ttoi(str.Left(nStrPos));
 	}
-	else if (m_bool)
+
+	if (m_bool)
 	{
-		CFile file;
-		file.Open(_T("Recive.txt"), CFile::modeCreate | CFile::modeWrite);
-		file.Write(buf, sizeof(buf));
-		m_bool = FALSE;
+		nBytes = 0;
+		char* szSend = NULL;
+		szSend = new char[nFileLen + 2048];
+		memset(szSend, 0x00, nFileLen + 2048);
+		int nPos = 0;
+		while (nFileLen > nPos)
+		{
+			nBytes += pSocket->Receive(szSend + nPos, 2048);
+			nPos += 2048;
+			if (nFileLen - nPos < 0)
+			{
+				int nLsatSize = nFileLen - (nPos - 2048);
+				Sleep(10);
+				nBytes += pSocket->Receive(szSend + nPos - 2048, nLsatSize);
+				break;
+			}
+			Sleep(10);
+		}
+
+
+		try
+		{
+			CFile file;
+			file.Open(m_sPath, CFile::modeCreate | CFile::modeWrite | CFile::typeBinary);
+			file.Write(szSend, nFileLen);
+		}
+		catch(CFileException* e)
+		{
+			e->m_cause;
+		}
+		delete[] szSend;
+		m_bool = 0;
 	}
 	else
-		m_list->AddString(str);
+	{
+		if(!str.IsEmpty()) m_list->AddString(str);
+	}
+		
+
+	//delete buf;
 }
 
 void CSocketStudyDlg::ProcessClose(CDataSocket* pSocket, int nErrorCode)
@@ -319,46 +365,64 @@ void CSocketStudyDlg::OnBnClickedButtonSelect()
 void CSocketStudyDlg::OnBnClickedButtonFilesend()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	CString sPath = _T("FileSend");
-	char pbuf[1000000] = { 0, };
+	CString sForm;
+	CFile file;
+	CString sPath;	
+	TCHAR* pbuf = NULL;
+	char pszBuf[2048] = { 0, };
+	int nPos = 0;
 	int n = 0;
 
-	n = m_pDataSocket->Send((LPCTSTR)sPath, (sPath.GetLength() + 1) * sizeof(TCHAR));
+	m_edit_path.GetWindowText(sPath);
+	if (!file.Open(sPath, CFile::modeRead | CFile::typeBinary))
+	{
+		m_list->AddString(_T("파일 열기 실패!"));
+		return;
+	}
+
+	ULONGLONG nFileLen = file.GetLength();
+	
+	sForm.Format(_T("FileSend%d%s"), nFileLen, sPath.Right(4));
+
+	n = m_pDataSocket->Send((LPCTSTR)sForm, (sForm.GetLength() + 1) * sizeof(TCHAR));
 	if (n < 0)
 	{
-		MessageBox(_T("요청 실패!"));
+		m_list->AddString(_T("요청 실패!"));
 		return;
 	}
 	else
 	{
-		MessageBox(_T("요청 성공!"));
+		m_list->AddString(_T("요청 성공!"));
+		Sleep(250);
 	}
 
+	
 
-	m_edit_path.GetWindowText(sPath);
 
-		CFile file;
-		if (!file.Open(sPath, CFile::modeRead))
+	pbuf = new TCHAR[nFileLen];
+	UINT nRead = file.Read(pbuf, (UINT)nFileLen);
+	if (nRead < 0)
+	{
+		m_list->AddString(_T("파일 읽기 실패!"));
+		//file.Close();
+		return;
+	}
+	else
+	{
+		while (nPos < nFileLen)
 		{
-			AfxMessageBox(_T("파일 열기 실패!"));
-			return;
-		}
-		UINT nRead = file.Read(pbuf, 1000000);
-		if (nRead < 0)
-		{
-			AfxMessageBox(_T("파일 읽기 실패!"));
-			//file.Close();
-			return;
-		}
-		else
-		{
-
-			n = m_pDataSocket->Send(pbuf, sizeof(pbuf));
+			memcpy(pszBuf, pbuf + nPos, sizeof(pszBuf));
+			n = m_pDataSocket->Send(pszBuf, 2048);
 			if (n < 0)
 			{
-				MessageBox(_T("음수 결과!"));
+				m_list->AddString(_T("음수 결과!"));
+				break;
 			}
-			file.Close();
+			nPos += 2048;
+			memset(pszBuf, 0x00, sizeof(pszBuf));
 		}
-		return;
+		file.Close();
+	}
+	delete[] pbuf;
+	return;
 }

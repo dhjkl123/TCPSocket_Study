@@ -22,6 +22,8 @@ public:
 	void ProcessClose(CDataSocket* pSocket, int nErrorCode);
 	CListBox* m_list;
 	BOOL m_bool;
+	CString m_sPath;
+	int m_nFileLen;
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_SOCKET_STUDY_DIALOG };
