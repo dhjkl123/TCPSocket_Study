@@ -44,6 +44,7 @@ void CSocketStudyDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_IPADDRESS1, m_ipaddr);
 	DDX_Control(pDX, IDC_EDIT1, m_edit);
 	DDX_Control(pDX, IDC_EDIT2, m_edit_path);
+	DDX_Control(pDX, IDC_PROGRESS1, m_progress);
 }
 
 BEGIN_MESSAGE_MAP(CSocketStudyDlg, CDialogEx)
@@ -96,6 +97,7 @@ BOOL CSocketStudyDlg::OnInitDialog()
 	m_ipaddr.SetWindowTextW(_T("172.30.1.41"));
 #endif
 	m_list = (CListBox *)GetDlgItem(IDC_LIST1);
+	m_progress.SetRange(0,100);
 
 	ASSERT(m_pListenSocket == NULL);
 	m_pListenSocket = new CListenSocket(this);
@@ -168,13 +170,13 @@ HCURSOR CSocketStudyDlg::OnQueryDragIcon()
 BOOL CSocketStudyDlg::DestroyWindow()
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
-	if (m_pListenSocket == NULL)
+	if (m_pListenSocket != NULL)
 	{
 		delete m_pListenSocket;
 		m_pListenSocket = NULL;
 	}
 
-	if (m_pDataSocket == NULL)
+	if (m_pDataSocket != NULL)
 	{
 		delete m_pDataSocket;
 		m_pDataSocket = NULL;
@@ -220,42 +222,52 @@ void CSocketStudyDlg::ProcessReceive(CDataSocket *pSocket, int nErrorCode)
 
 	if (str.Left(8) == "FileSend")
 	{
+		int nStrPos = 0;
 		m_bool = TRUE;
 		sTmp = str.Right(4);
 		m_sPath = _T("Recive") + sTmp;
 		str.Replace(_T("FileSend"), _T(""));
 
-		int nStrPos = str.Find(_T("."));
+		nStrPos = str.Find(_T("."));
 		nFileLen = _ttoi(str.Left(nStrPos));
 	}
 
 	if (m_bool)
 	{
 		nBytes = 0;
-		char* szSend = NULL;
-		szSend = new char[nFileLen + 2048];
-		memset(szSend, 0x00, nFileLen + 2048);
 		int nPos = 0;
+		char* szSend = NULL;
+		szSend = new char[nFileLen + 1];
+		memset(szSend, 0x00, nFileLen + 1);
+		
 		while (nFileLen > nPos)
 		{
+			int nCnt = 0;
 			nBytes += pSocket->Receive(szSend + nPos, 2048);
 			nPos += 2048;
-			if (nFileLen - nPos < 0)
+			str.Format(_T("nCnt : %d"), nCnt);
+			m_list->AddString(str);
+			if (nFileLen < nPos + 2048)
 			{
-				int nLsatSize = nFileLen - (nPos - 2048);
-				Sleep(10);
-				nBytes += pSocket->Receive(szSend + nPos - 2048, nLsatSize);
+				int nLsatSize = nFileLen - nPos;
+				int nTmp = 0;
+				nTmp = pSocket->Receive(szSend + nPos, nLsatSize);
+				nBytes += nTmp;
+				str.Format(_T("Last!"));
+				m_list->AddString(str);		
 				break;
 			}
 			Sleep(10);
+			nCnt++;
 		}
-
 
 		try
 		{
 			CFile file;
 			file.Open(m_sPath, CFile::modeCreate | CFile::modeWrite | CFile::typeBinary);
 			file.Write(szSend, nFileLen);
+			file.Close();
+			pSocket->Receive(szSend, 2048);
 		}
 		catch(CFileException* e)
 		{
@@ -266,11 +278,10 @@ void CSocketStudyDlg::ProcessReceive(CDataSocket *pSocket, int nErrorCode)
 	}
 	else
 	{
-		if(!str.IsEmpty()) m_list->AddString(str);
+		if(!str.IsEmpty())
+			m_list->AddString(str);
 	}
-		
 
-	//delete buf;
 }
 
 void CSocketStudyDlg::ProcessClose(CDataSocket* pSocket, int nErrorCode)
@@ -368,11 +379,11 @@ void CSocketStudyDlg::OnBnClickedButtonFilesend()
 	CString sForm;
 	CFile file;
 	CString sPath;	
-	TCHAR* pbuf = NULL;
+	char* pbuf = NULL;
 	char pszBuf[2048] = { 0, };
 	int nPos = 0;
 	int n = 0;
-
+	m_progress.SetPos(0);
 	m_edit_path.GetWindowText(sPath);
 	if (!file.Open(sPath, CFile::modeRead | CFile::typeBinary))
 	{
@@ -399,7 +410,7 @@ void CSocketStudyDlg::OnBnClickedButtonFilesend()
 	
 
 
-	pbuf = new TCHAR[nFileLen];
+	pbuf = new char[nFileLen];
 	UINT nRead = file.Read(pbuf, (UINT)nFileLen);
 	if (nRead < 0)
 	{
@@ -409,10 +420,14 @@ void CSocketStudyDlg::OnBnClickedButtonFilesend()
 	}
 	else
 	{
+		double nPercent = 2048 / (double)nFileLen *100;
+
+		int nCnt = 1;
 		while (nPos < nFileLen)
 		{
 			memcpy(pszBuf, pbuf + nPos, sizeof(pszBuf));
 			n = m_pDataSocket->Send(pszBuf, 2048);
+			m_list->AddString(_T("Sending!"));
 			if (n < 0)
 			{
 				m_list->AddString(_T("음수 결과!"));
@@ -420,6 +435,16 @@ void CSocketStudyDlg::OnBnClickedButtonFilesend()
 			}
 			nPos += 2048;
 			memset(pszBuf, 0x00, sizeof(pszBuf));
+			
+			if (nPercent > 100)
+				m_progress.SetPos(100);
+			else
+			{
+				m_progress.SetPos((int)(nPercent * nCnt));
+				nCnt++;
+			}
+
+			Sleep(100);
 		}
 		file.Close();
 	}

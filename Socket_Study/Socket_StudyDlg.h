@@ -53,4 +53,5 @@ public:
 	CEdit m_edit_path;
 	afx_msg void OnBnClickedButtonSelect();
 	afx_msg void OnBnClickedButtonFilesend();
+	CProgressCtrl m_progress;
 };
