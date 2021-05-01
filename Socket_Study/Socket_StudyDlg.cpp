@@ -214,73 +214,6 @@ void CSocketStudyDlg::ProcessAccept(int nErrorCode)
 
 void CSocketStudyDlg::ProcessReceive(CDataSocket *pSocket, int nErrorCode)
 {
-	char buf[100] = { 0, };
-	int nBytes = pSocket->Receive(buf, 100);
-	int nFileLen = 0;
-	CString str, sTmp;
-	str.Format(_T("%s"), &buf);
-
-	if (str.Left(8) == "FileSend")
-	{
-		int nStrPos = 0;
-		m_bool = TRUE;
-		sTmp = str.Right(4);
-		m_sPath = _T("Recive") + sTmp;
-		str.Replace(_T("FileSend"), _T(""));
-
-		nStrPos = str.Find(_T("."));
-		nFileLen = _ttoi(str.Left(nStrPos));
-	}
-
-	if (m_bool)
-	{
-		nBytes = 0;
-		int nPos = 0;
-		char* szSend = NULL;
-		szSend = new char[nFileLen + 1];
-		memset(szSend, 0x00, nFileLen + 1);
-		
-		while (nFileLen > nPos)
-		{
-			int nCnt = 0;
-			nBytes += pSocket->Receive(szSend + nPos, 2048);
-			nPos += 2048;
-			str.Format(_T("nCnt : %d"), nCnt);
-			m_list->AddString(str);
-			if (nFileLen < nPos + 2048)
-			{
-				int nLsatSize = nFileLen - nPos;
-				int nTmp = 0;
-				nTmp = pSocket->Receive(szSend + nPos, nLsatSize);
-				nBytes += nTmp;
-				str.Format(_T("Last!"));
-				m_list->AddString(str);		
-				break;
-			}
-			Sleep(10);
-			nCnt++;
-		}
-
-		try
-		{
-			CFile file;
-			file.Open(m_sPath, CFile::modeCreate | CFile::modeWrite | CFile::typeBinary);
-			file.Write(szSend, nFileLen);
-			file.Close();
-			pSocket->Receive(szSend, 2048);
-		}
-		catch(CFileException* e)
-		{
-			e->m_cause;
-		}
-		delete[] szSend;
-		m_bool = 0;
-	}
-	else
-	{
-		if(!str.IsEmpty())
-			m_list->AddString(str);
-	}
 
 }
 
@@ -385,69 +318,17 @@ void CSocketStudyDlg::OnBnClickedButtonFilesend()
 	int n = 0;
 	m_progress.SetPos(0);
 	m_edit_path.GetWindowText(sPath);
-	if (!file.Open(sPath, CFile::modeRead | CFile::typeBinary))
-	{
-		m_list->AddString(_T("파일 열기 실패!"));
-		return;
-	}
 
-	ULONGLONG nFileLen = file.GetLength();
-	
-	sForm.Format(_T("FileSend%d%s"), nFileLen, sPath.Right(4));
+	m_pSendTread = (CSendThread*)AfxBeginThread(RUNTIME_CLASS(CSendThread),
+		THREAD_PRIORITY_HIGHEST,
+		0,
+		CREATE_SUSPENDED);
 
-	n = m_pDataSocket->Send((LPCTSTR)sForm, (sForm.GetLength() + 1) * sizeof(TCHAR));
-	if (n < 0)
-	{
-		m_list->AddString(_T("요청 실패!"));
-		return;
-	}
-	else
-	{
-		m_list->AddString(_T("요청 성공!"));
-		Sleep(250);
-	}
+	m_pSendTread->SetFilePath(sPath);
 
-	
+	m_pSendTread->SetPtr(this, m_pDataSocket);
 
+	m_pSendTread->ResumeThread();
 
-	pbuf = new char[nFileLen];
-	UINT nRead = file.Read(pbuf, (UINT)nFileLen);
-	if (nRead < 0)
-	{
-		m_list->AddString(_T("파일 읽기 실패!"));
-		//file.Close();
-		return;
-	}
-	else
-	{
-		double nPercent = 2048 / (double)nFileLen *100;
-
-		int nCnt = 1;
-		while (nPos < nFileLen)
-		{
-			memcpy(pszBuf, pbuf + nPos, sizeof(pszBuf));
-			n = m_pDataSocket->Send(pszBuf, 2048);
-			m_list->AddString(_T("Sending!"));
-			if (n < 0)
-			{
-				m_list->AddString(_T("음수 결과!"));
-				break;
-			}
-			nPos += 2048;
-			memset(pszBuf, 0x00, sizeof(pszBuf));
-			
-			if (nPercent > 100)
-				m_progress.SetPos(100);
-			else
-			{
-				m_progress.SetPos((int)(nPercent * nCnt));
-				nCnt++;
-			}
-
-			Sleep(100);
-		}
-		file.Close();
-	}
-	delete[] pbuf;
 	return;
 }

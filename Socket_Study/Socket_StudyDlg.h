@@ -5,10 +5,12 @@
 #pragma once
 #include "CDataSocket.h"
 #include "CListenSocket.h"
+#include "CSendThread.h"
 
 // CSocketStudyDlg 대화 상자
 class CDataSocket;
 class CListenSocket;
+class CSendThread;
 class CSocketStudyDlg : public CDialogEx
 {
 // 생성입니다.
@@ -17,6 +19,7 @@ public:
 	~CSocketStudyDlg();
 	CListenSocket* m_pListenSocket;
 	CDataSocket* m_pDataSocket;
+	CSendThread* m_pSendTread;
 	void ProcessAccept(int nErrorCode);
 	void ProcessReceive(CDataSocket* pSocket, int nErrorCode);
 	void ProcessClose(CDataSocket* pSocket, int nErrorCode);

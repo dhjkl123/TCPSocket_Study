@@ -39,6 +39,9 @@
     <ClInclude Include="CDataSocket.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="CSendThread.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Socket_Study.cpp">
@@ -54,6 +57,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="CDataSocket.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="CSendThread.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
