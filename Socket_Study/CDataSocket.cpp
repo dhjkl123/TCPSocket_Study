@@ -4,7 +4,7 @@
 #include "pch.h"
 #include "Socket_Study.h"
 #include "CDataSocket.h"
-
+#include "CSocketThread.h"
 
 // CDataSocket
 
@@ -13,13 +13,47 @@ CDataSocket::CDataSocket(CSocketStudyDlg* pDlg)
 	m_pDlg = pDlg;
 }
 
+CDataSocket::CDataSocket()
+{
+}
+
 CDataSocket::~CDataSocket()
 {
 }
 
+void CDataSocket::SetWnd(HWND hWnd, LPVOID pDlg)
+{
+	m_hWnd = hWnd;
+	m_pDlg = (CSocketStudyDlg*)pDlg;
+}
 
 // CDataSocket 멤버 함수
+void CDataSocket::OnAccept(int nErrorCode)
+{
+	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
 
+	CSocket sock;
+	if (Accept(sock))
+	{
+		CSocketThread* pThread = (CSocketThread*)AfxBeginThread(RUNTIME_CLASS(CSocketThread), THREAD_PRIORITY_NORMAL, 0, CREATE_SUSPENDED);
+		pThread->SetWnd(m_hWnd, m_pDlg);
+
+		if (!pThread)
+		{
+			sock.Close();
+			m_pDlg->m_list->AddString(_T("ERROR : Thread could not be created !!"));
+			return;
+		}
+
+		sock.Send(_T("Connect with Server"), 43);
+
+		pThread->m_hSocket = sock.Detach();
+		pThread->ResumeThread();
+	}
+
+	CSocket::OnAccept(nErrorCode);
+	//m_pDlg->ProcessAccept(nErrorCode);
+}
 
 void CDataSocket::OnReceive(int nErrorCode)
 {
@@ -104,6 +138,10 @@ void CDataSocket::OnReceive(int nErrorCode)
 void CDataSocket::OnClose(int nErrorCode)
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
+
+	//m_pThread->PostThreadMessage(WM_QUIT, 0, 0);
+
+	//SendMessage(m_hWnd, WM_CLIENT_CLOSE, 0, (LPARAM)this);
 
 	CSocket::OnClose(nErrorCode);
 	m_pDlg->ProcessClose(this, nErrorCode);

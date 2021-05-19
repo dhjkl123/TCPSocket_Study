@@ -56,6 +56,8 @@ BEGIN_MESSAGE_MAP(CSocketStudyDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_SEND, &CSocketStudyDlg::OnBnClickedButtonSend)
 	ON_BN_CLICKED(IDC_BUTTON_SELECT, &CSocketStudyDlg::OnBnClickedButtonSelect)
 	ON_BN_CLICKED(IDC_BUTTON_FILESEND, &CSocketStudyDlg::OnBnClickedButtonFilesend)
+	ON_BN_CLICKED(IDC_BUTTON1, &CSocketStudyDlg::OnBnClickedButton1)
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -93,25 +95,16 @@ BOOL CSocketStudyDlg::OnInitDialog()
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
 #ifdef DEBUG
 	m_ipaddr.SetWindowTextW(_T("172.30.1.7"));
-#else // DEBUG
+	m_ipaddr.SetWindowTextW(_T("127.0.0.1")); // outdoor
+#else // RELEASE
 	m_ipaddr.SetWindowTextW(_T("172.30.1.41"));
 #endif
 	m_list = (CListBox *)GetDlgItem(IDC_LIST1);
 	m_progress.SetRange(0,100);
 
-	ASSERT(m_pListenSocket == NULL);
-	m_pListenSocket = new CListenSocket(this);
-	if (m_pListenSocket->Create(8000))
-	{
-		if (m_pListenSocket->Listen())
-		{
-			AfxMessageBox(_T("서버를 시작합니다."));
-			return TRUE;
-		}
+	//
+	//ASSERT(m_pListenSocket == NULL);
 
-	}
-
-	AfxMessageBox(_T("이미 실행중인 서버가 있습니다."));
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -235,8 +228,10 @@ void CSocketStudyDlg::OnBnClickedButtonConnect()
 		m_pDataSocket->Create();
 		CString addr;
 		m_ipaddr.GetWindowText(addr);
+		//SetTimer(0, 1, NULL);
 		if (m_pDataSocket->Connect(addr, 8000))
 		{
+			
 			MessageBox(_T("접속 성공"));
 			m_edit.SetFocus();
 		}
@@ -331,4 +326,54 @@ void CSocketStudyDlg::OnBnClickedButtonFilesend()
 	m_pSendTread->ResumeThread();
 
 	return;
+}
+
+
+void CSocketStudyDlg::OnBnClickedButton1()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	ASSERT(m_pDataSocket == NULL);
+	DWORD dwTimeOut = 3000;
+	m_pDataSocket = new CDataSocket(this);
+	//if (m_pListenSocket->Create(8000))
+	if (m_pDataSocket->Create(8000))
+	{
+		
+		//if (m_pListenSocket->Listen())
+		if (m_pDataSocket->Listen())
+		{		
+			AfxMessageBox(_T("서버를 시작합니다."));
+			return;
+		}
+
+	}
+
+	AfxMessageBox(_T("이미 실행중인 서버가 있습니다."));
+	return;
+
+}
+
+
+void CSocketStudyDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
+	switch (nIDEvent)
+	{
+	case 0:
+		if (!m_bool)
+		{
+			m_bool = TRUE;
+		}
+		else
+		{
+			
+			m_pDataSocket->Close();
+			m_bool = FALSE;
+			KillTimer(0);
+			AfxMessageBox(_T("소켓 Close"));
+		}
+		Sleep(1400);
+		break;
+	}
+	CDialogEx::OnTimer(nIDEvent);
 }

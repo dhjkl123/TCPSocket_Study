@@ -90,7 +90,12 @@ int CSendThread::Run()
 		int nCnt = 1;
 		while (nPos < nFileLen)
 		{
-			memcpy(pszBuf, pbuf + nPos, sizeof(pszBuf));
+			// nPos + sizeof(pszBuf) > nFileLen
+			if((nPos + sizeof(pszBuf)) > nFileLen)
+				memcpy(pszBuf, pbuf + nPos, nFileLen - nPos);
+			else
+				memcpy(pszBuf, pbuf + nPos, sizeof(pszBuf));
+
 			n = m_pDataSocket->Send(pszBuf, 2048);
 
 			if (n < 0)

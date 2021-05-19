@@ -27,6 +27,7 @@ public:
 	BOOL m_bool;
 	CString m_sPath;
 	int m_nFileLen;
+	bool m_bBool;
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_SOCKET_STUDY_DIALOG };
@@ -57,4 +58,6 @@ public:
 	afx_msg void OnBnClickedButtonSelect();
 	afx_msg void OnBnClickedButtonFilesend();
 	CProgressCtrl m_progress;
+	afx_msg void OnBnClickedButton1();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 };

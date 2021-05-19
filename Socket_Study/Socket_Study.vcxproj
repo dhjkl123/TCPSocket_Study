@@ -186,6 +186,7 @@
     <ClInclude Include="CDataSocket.h" />
     <ClInclude Include="CListenSocket.h" />
     <ClInclude Include="CSendThread.h" />
+    <ClInclude Include="CSocketThread.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
@@ -197,6 +198,7 @@
     <ClCompile Include="CDataSocket.cpp" />
     <ClCompile Include="CListenSocket.cpp" />
     <ClCompile Include="CSendThread.cpp" />
+    <ClCompile Include="CSocketThread.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
